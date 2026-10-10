@@ -41,19 +41,26 @@ def handle_client(client_socket):
             elif command == "ECHO":
                 client_socket.sendall(f"${len(command_parts[1])}\r\n{command_parts[1]}\r\n".encode())
             elif command == "SET":
-                data_store[command_parts[1]] = command_parts[2]
-                client_socket.sendall(b"+OK\r\n")
                 if len(command_parts) > 3:
-                    expiry_seconds = int(command_parts[4]) / 1000.0
-                    data_store[command_parts[1] + "_deadline"] = time.time() + expiry_seconds
-                                        
-            elif command == "GET":
-                if command_parts[1] in data_store:
-                    client_socket.sendall(f"${len(data_store[command_parts[1]])}\r\n{data_store[command_parts[1]]}\r\n".encode())
+                    expiry_ms = int(command_parts[4])
+                    expires_at = time.time() + (expiry_ms / 1000.0)
+                    data_store[command_parts[1]] = {"value": command_parts[2], "expires_at": expires_at}
+                    client_socket.sendall(b"+OK\r\n")
                 else:
+                    data_store[command_parts[1]] = {"value": command_parts[2], "expires_at": None}
+                    client_socket.sendall(b"+OK\r\n")
+            elif command == "GET":
+                key = command_parts[1]
+                if key not in data_store:
                     client_socket.sendall(b"$-1\r\n")
+                    continue
+                entry = data_store[key]
+                if entry["expires_at"] is not None and entry["expires_at"] < time.time():
+                    del data_store[key]
+                    client_socket.sendall(b"$-1\r\n")
+                    continue
+                client_socket.sendall(f"${len(entry["value"])}\r\n{entry["value"]}\r\n".encode())
 
-                    
     finally:
         client_socket.close()
 
