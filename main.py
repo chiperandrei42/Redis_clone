@@ -82,10 +82,13 @@ def handle_client(client_socket):
                 if data_store[key]["type"] != "list":
                     client_socket.sendall(b"-WRONGTYPE Operation against a key holding the wrong kind of value\r\n")
                     continue
+                list_len = len(data_store[key]["value"])
                 if start < 0:
-                    start = len(data_store[key]["value"]) + start
+                    start = list_len + start
                 if stop < 0:
-                    stop = len(data_store[key]["value"]) + stop
+                    stop = list_len + stop
+                start = max(start, 0)
+                stop = min(stop, list_len - 1)
                 if start > stop:
                     client_socket.sendall(b"*0\r\n")
                     continue
@@ -97,6 +100,19 @@ def handle_client(client_socket):
                     client_socket.sendall(response.encode())
                 else:
                     client_socket.sendall(b"*0\r\n")
+            elif command == "LPUSH":
+                key = command_parts[1]
+                values = command_parts[2:]
+                if key not in data_store:
+                    data_store[key] = {"type": "list", "value": [], "expires_at": None}
+                if data_store[key]["type"] != "list":
+                    client_socket.sendall(b"-WRONGTYPE Operation against a key holding the wrong kind of value\r\n")
+                    continue
+                reversed_values = values[::-1]
+                data_store[key]["value"] = reversed_values + data_store[key]["value"]
+                client_socket.sendall(f":{len(data_store[key]["value"])}\r\n".encode())
+    
+
     finally:
         client_socket.close()
 

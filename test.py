@@ -22,15 +22,15 @@ print('RPUSH 1 got:', s1.recv(1024))
 s1.sendall(b"*4\r\n$5\r\nRPUSH\r\n$6\r\nmylist\r\n$4\r\nsecond\r\n$5\r\nthird\r\n")
 print('RPUSH 2 got:', s1.recv(1024))
 
-# Push 3 items: "a", "b", "c"
-s1.sendall(b"*5\r\n$5\r\nRPUSH\r\n$6\r\nletters\r\n$1\r\na\r\n$1\r\nb\r\n$1\r\nc\r\n")
-print("RPUSH got:", s1.recv(1024))
+# Push "x" first
+# Then LPUSH "a", "b", "c"
+# LRANGE 0 -1 should yield: "c", "b", "a", "x"
 
-# LRANGE letters 0 1 -> should return ["a", "b"] (*2\r\n...)
+s1.sendall(b"*3\r\n$5\r\nLPUSH\r\n$6\r\nletters\r\n$1\r\nx\r\n")
+print("LPUSH 1 got:", s1.recv(1024))
+
+s1.sendall(b"*4\r\n$5\r\nLPUSH\r\n$6\r\nletters\r\n$1\r\na\r\n$1\r\nb\r\n$1\r\nc\r\n")
+print("LPUSH 2 got:", s1.recv(1024))
+
 s1.sendall(b"*4\r\n$6\r\nLRANGE\r\n$7\r\nletters\r\n$1\r\n0\r\n$2\r\n-1\r\n")
 print("LRANGE 0 -1 got:", s1.recv(1024))
-
-# LRANGE letters 1 2 -> should return ["b", "c"] (*2\r\n...)
-s1.sendall(b"*4\r\n$6\r\nLRANGE\r\n$7\r\nletters\r\n$1\r\n1\r\n$1\r\n2\r\n")
-print("LRANGE 1 2 got:", s1.recv(1024))
-
